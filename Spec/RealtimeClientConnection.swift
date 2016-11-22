@@ -3361,6 +3361,42 @@ class RealtimeClientConnection: QuickSpec {
                     }
                 }
 
+                // RTN22
+                it("Ably can request that a connected client re-authenticates by sending the client an AUTH ProtocolMessage") {
+                    let options = AblyTests.commonAppSetup()
+                    options.autoConnect = false
+                    options.token = getTestToken(ttl: 5.0)
+                    let client = ARTRealtime(options: options)
+                    defer { client.dispose(); client.close() }
+                    client.setTransportClass(TestProxyTransport.self)
+
+                    waitUntil(timeout: testTimeout) { done in
+                        client.connection.once(.Connected) { stateChange in
+                            expect(stateChange?.reason).to(beNil())
+                            done()
+                        }
+                        client.connect()
+                    }
+
+                    guard let initialToken = client.auth.tokenDetails?.token else {
+                        fail("Initial token is nil"); return
+                    }
+
+                    guard let transport = client.transport as? TestProxyTransport else {
+                        fail("TestProxyTransport is not set"); return
+                    }
+
+                    expect(transport.protocolMessagesReceived.filter{ $0.action == .Auth }).toEventually(haveCount(1), timeout: testTimeout)
+
+                    waitUntil(timeout: testTimeout) { done in
+                        client.connection.once(.Connected) { stateChange in
+                            expect(stateChange?.reason).to(beNil())
+                            expect(initialToken).toNot(equal(client.auth.tokenDetails?.token))
+                            done()
+                        }
+                    }
+                }
+
             }
 
             // https://github.com/ably/ably-ios/issues/454
