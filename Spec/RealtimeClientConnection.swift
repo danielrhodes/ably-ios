@@ -3397,6 +3397,81 @@ class RealtimeClientConnection: QuickSpec {
                     }
                 }
 
+                // RTN22a
+                it("re-authenticate and resume the connection when the client is forcibly disconnected following a DISCONNECTED message containing an error code in the range 40140 <= code < 40150") {
+                    let options = AblyTests.commonAppSetup()
+                    options.autoConnect = false
+                    options.disconnectedRetryTimeout = 1.0
+                    options.token = getTestToken(key: options.key!, ttl: 5.0)
+                    let client = ARTRealtime(options: options)
+                    defer { client.dispose(); client.close() }
+                    client.setTransportClass(TestProxyTransport.self)
+                    let channel = client.channels.get("foo")
+
+                    waitUntil(timeout: testTimeout) { done in
+                        client.connect()
+                        channel.attach { error in
+                            expect(error).to(beNil())
+                            done()
+                        }
+                    }
+
+                    guard let initialConnectionId = client.connection.id else {
+                        fail("ConnectionId is nil"); return
+                    }
+
+                    guard let initialToken = client.auth.tokenDetails?.token else {
+                        fail("Initial token is nil"); return
+                    }
+
+                    guard let transport = client.transport as? TestProxyTransport else {
+                        fail("TestProxyTransport is not set"); return
+                    }
+
+                    channel.once(.Detached) { _ in
+                        fail("Should not detach channels")
+                    }
+
+                    var authorizeMethodCallCount = 0
+                    let hook = client.auth.testSuite_injectIntoMethodAfter(#selector(client.auth.authorize)) {
+                        authorizeMethodCallCount += 1
+                    }
+                    defer { hook.remove() }
+
+                    expect(client.connection.state).toEventually(equal(ARTRealtimeConnectionState.Connecting), timeout: testTimeout)
+                    expect(transport.protocolMessagesReceived.filter{ $0.action == .Disconnected }).to(haveCount(1))
+
+                    waitUntil(timeout: testTimeout) { done in
+                        client.connection.once(.Connected) { stateChange in
+                            expect(stateChange?.reason).to(beNil())
+                            expect(initialToken).toNot(equal(client.auth.tokenDetails?.token))
+                            done()
+                        }
+                    }
+
+                    expect(client.connection.id).to(equal(initialConnectionId))
+                    expect(authorizeMethodCallCount) == 1
+
+                    waitUntil(timeout: testTimeout) { done in
+                        let partialDone = AblyTests.splitDone(2, done: done)
+                        let expectedMessage = ARTMessage(name: "ios", data: "message1")
+
+                        channel.subscribe() { message in
+                            expect(message.name).to(equal(expectedMessage.name))
+                            expect(message.data as? String).to(equal(expectedMessage.data as? String))
+                            partialDone()
+                        }
+
+                        let rest = ARTRest(options: AblyTests.clientOptions(key: options.key!))
+                        rest.channels.get("foo").publish([expectedMessage]) { error in
+                            expect(error).to(beNil())
+                            partialDone()
+                        }
+                    }
+
+                    channel.off()
+                }
+
             }
 
             // https://github.com/ably/ably-ios/issues/454
