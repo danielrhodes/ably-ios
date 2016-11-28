@@ -235,15 +235,18 @@ class RealtimeClientChannel: QuickSpec {
                     defer { client.dispose(); client.close() }
                     let channel = client.channels.get("test")
 
-                    let error = AblyTests.newErrorProtocolMessage()
+                    let pmError = AblyTests.newErrorProtocolMessage()
 
                     waitUntil(timeout: testTimeout) { done in
-                        channel.on(.Failed) { errorInfo in
-                            expect(errorInfo).to(equal(error.error))
-                            expect(channel.errorReason).to(equal(error.error))
+                        channel.on(.Error) { stateChange in
+                            guard let error = stateChange?.reason else {
+                                fail("Error is nil"); done(); return
+                            }
+                            expect(error).to(equal(pmError.error))
+                            expect(channel.errorReason).to(equal(pmError.error))
                             done()
                         }
-                        channel.onError(error)
+                        channel.onError(pmError)
                     }
                 }
 
