@@ -250,6 +250,39 @@ class RealtimeClientChannel: QuickSpec {
                     }
                 }
 
+                // RTL2d
+                it("a ChannelStateChange is emitted as the first argument for every channel state change") {
+                    let client = ARTRealtime(options: AblyTests.commonAppSetup())
+                    defer { client.dispose(); client.close() }
+                    let channel = client.channels.get("test")
+
+                    channel.on { stateChange in
+                        guard let stateChange = stateChange else {
+                            fail("ChannelStageChange is nil"); return
+                        }
+                        expect(stateChange.reason).to(beNil())
+                        expect(stateChange.current.rawValue).to(equal(channel.state.rawValue))
+                        expect(stateChange.previous.rawValue).toNot(equal(channel.state.rawValue))
+                    }
+
+                    channel.attach()
+                    expect(channel.state).toEventually(equal(ARTChannelState.Attached), timeout: testTimeout)
+                    channel.off()
+
+                    waitUntil(timeout: testTimeout) { done in
+                        channel.once(.Failed) { stateChange in
+                            guard let stateChange = stateChange else {
+                                fail("ChannelStageChange is nil"); done(); return
+                            }
+                            expect(stateChange.reason).toNot(beNil())
+                            expect(stateChange.current).to(equal(ARTChannelState.Failed))
+                            expect(stateChange.previous).to(equal(ARTChannelState.Attached))
+                            done()
+                        }
+                        channel.onError(AblyTests.newErrorProtocolMessage())
+                    }
+                }
+
             }
 
             // RTL3
