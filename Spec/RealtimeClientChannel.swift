@@ -1255,7 +1255,7 @@ class RealtimeClientChannel: QuickSpec {
                     }
 
                     // RTL6c4
-                    context("will result in an error if the connection is") {
+                    context("will result in an error if the") {
                         let options = AblyTests.commonAppSetup()
                         options.disconnectedRetryTimeout = 0.1
                         options.suspendedRetryTimeout = 0.3
@@ -1282,7 +1282,7 @@ class RealtimeClientChannel: QuickSpec {
                             }
                         }
 
-                        it("SUSPENDED") {
+                        it("connection is SUSPENDED") {
                             client.connect()
                             expect(client.connection.state).toEventually(equal(ARTRealtimeConnectionState.Connected), timeout: testTimeout)
                             client.onSuspended()
@@ -1292,7 +1292,7 @@ class RealtimeClientChannel: QuickSpec {
                             }
                         }
 
-                        it("CLOSING") {
+                        it("connection is CLOSING") {
                             client.connect()
                             expect(client.connection.state).toEventually(equal(ARTRealtimeConnectionState.Connected), timeout: testTimeout)
                             client.close()
@@ -1302,7 +1302,7 @@ class RealtimeClientChannel: QuickSpec {
                             }
                         }
 
-                        it("CLOSED") {
+                        it("connection is CLOSED") {
                             client.connect()
                             expect(client.connection.state).toEventually(equal(ARTRealtimeConnectionState.Connected), timeout: testTimeout)
                             client.close()
@@ -1312,7 +1312,7 @@ class RealtimeClientChannel: QuickSpec {
                             }
                         }
 
-                        it("FAILED") {
+                        it("connection is FAILED") {
                             client.connect()
                             expect(client.connection.state).toEventually(equal(ARTRealtimeConnectionState.Connected), timeout: testTimeout)
                             client.onError(AblyTests.newErrorProtocolMessage())
@@ -1322,7 +1322,7 @@ class RealtimeClientChannel: QuickSpec {
                             }
                         }
 
-                        it("DETACHING") {
+                        it("channel is DETACHING") {
                             client.connect()
                             channel.attach()
                             expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
@@ -1333,12 +1333,23 @@ class RealtimeClientChannel: QuickSpec {
                             }
                         }
 
-                        it("DETACHED") {
+                        it("channel is DETACHED") {
                             client.connect()
                             channel.attach()
                             expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
                             channel.detach()
                             expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Detached), timeout: testTimeout)
+                            waitUntil(timeout: testTimeout) { done in
+                                publish(done)
+                            }
+                        }
+
+                        it("channel is SUSPENDED") {
+                            client.connect()
+                            channel.attach()
+                            expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
+                            channel.setSuspended()
+                            expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Suspended), timeout: testTimeout)
                             waitUntil(timeout: testTimeout) { done in
                                 publish(done)
                             }
