@@ -578,7 +578,7 @@ class RealtimeClientChannel: QuickSpec {
                 }
 
                 // RTL4f
-                it("should transition the channel state to FAILED if ATTACHED ProtocolMessage is not received") {
+                it("should transition the channel state to SUSPENDED if ATTACHED ProtocolMessage is not received") {
                     let previousRealtimeRequestTimeout = ARTDefault.realtimeRequestTimeout()
                     defer { ARTDefault.setRealtimeRequestTimeout(previousRealtimeRequestTimeout) }
                     ARTDefault.setRealtimeRequestTimeout(3.0)
@@ -601,11 +601,13 @@ class RealtimeClientChannel: QuickSpec {
                         callbackCalled = true
                     }
                     let start = NSDate()
-                    expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Failed), timeout: testTimeout)
+                    expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Suspended), timeout: testTimeout)
+                    let end = NSDate()
                     expect(channel.errorReason).toNot(beNil())
                     expect(callbackCalled).to(beTrue())
-                    let end = NSDate()
                     expect(start.dateByAddingTimeInterval(3.0)).to(beCloseTo(end, within: 0.5))
+                    // Automatically re-attached
+                    expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
                 }
 
                 it("if called with a callback should call it once attached") {
