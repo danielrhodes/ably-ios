@@ -283,6 +283,52 @@ class RealtimeClientChannel: QuickSpec {
                     }
                 }
 
+                // RTL2f
+                it("ChannelStateChange will contain a resumed boolean attribute with value @true@ if the bit flag RESUMED was included") {
+                    let options = AblyTests.commonAppSetup()
+                    options.disconnectedRetryTimeout = 1.0
+                    options.tokenDetails = getTestTokenDetails(ttl: 5.0)
+                    let client = ARTRealtime(options: options)
+                    defer { client.dispose(); client.close() }
+                    let channel = client.channels.get("test")
+
+                    waitUntil(timeout: testTimeout) { done in
+                        channel.on { stateChange in
+                            guard let stateChange = stateChange else {
+                                fail("ChannelStageChange is nil"); done(); return
+                            }
+                            switch stateChange.current {
+                            case .Attached:
+                                expect(stateChange.resumed).to(beFalse())
+                            default:
+                                expect(stateChange.resumed).to(beFalse())
+                            }
+                        }
+                        client.connection.once(.Disconnected) { stateChange in
+                            channel.off()
+                            guard let error = stateChange?.reason else {
+                                fail("Error is nil"); done(); return
+                            }
+                            expect(error.code) == 40142
+                            done()
+                        }
+                        channel.attach()
+                    }
+
+                    waitUntil(timeout: testTimeout) { done in
+                        channel.once(.Attached) { stateChange in
+                            guard let stateChange = stateChange else {
+                                fail("ChannelStageChange is nil"); done(); return
+                            }
+                            expect(stateChange.resumed).to(beTrue())
+                            expect(stateChange.reason).to(beNil())
+                            expect(stateChange.current).to(equal(ARTChannelState.Attached))
+                            expect(stateChange.previous).to(equal(ARTChannelState.Attached))
+                            done()
+                        }
+                    }
+                }
+
             }
 
             // RTL3
