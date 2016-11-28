@@ -103,39 +103,117 @@ class RealtimeClientChannel: QuickSpec {
                         emitCounter += 1
                     }
 
-                    var states = [ARTRealtimeChannelState]()
+                    var states = [ARTChannelState]()
                     waitUntil(timeout: testTimeout) { done in
-                        channel.on { errorInfo in
-                            states += [channel.state]
+                        channel.on { stateChange in
+                            guard let stateChange = stateChange else {
+                                fail("ChannelStateChange is nil"); done(); return
+                            }
+                            states += [stateChange.current]
                             switch channel.state {
                             case .Attached:
                                 channel.detach()
                             case .Detached:
-                                channel.onError(AblyTests.newErrorProtocolMessage())
-                            case .Failed:
                                 done()
                             default:
                                 break
                             }
                         }
+                        channel.on(.Error) { stateChange in
+                            // Finish
+                            guard let stateChange = stateChange else {
+                                fail("ChannelStateChange is nil"); done(); return
+                            }
+                            guard let reason = stateChange.reason else {
+                                fail("Reason is nil"); done(); return
+                            }
+                            expect(reason.message).to(equal("channel has detached"))
+                            expect(stateChange.current).to(equal(ARTChannelState.Detached))
+                            done()
+                        }
                         channel.attach()
                     }
-                    channel.off()
 
                     expect(channelOnMethodCalled).to(beTrue())
                     expect(statesEventEmitterOnMethodCalled).to(beTrue())
-                    expect(emitCounter).to(equal(5))
+                    expect(emitCounter).to(equal(4))
 
-                    if states.count != 5 {
-                        fail("Expecting 5 states; got \(states)")
+                    if states.count != 4 {
+                        fail("Expecting 4 states; got \(states)")
                         return
                     }
 
-                    expect(states[0].rawValue).to(equal(ARTRealtimeChannelState.Attaching.rawValue), description: "Should be ATTACHING state")
-                    expect(states[1].rawValue).to(equal(ARTRealtimeChannelState.Attached.rawValue), description: "Should be ATTACHED state")
-                    expect(states[2].rawValue).to(equal(ARTRealtimeChannelState.Detaching.rawValue), description: "Should be DETACHING state")
-                    expect(states[3].rawValue).to(equal(ARTRealtimeChannelState.Detached.rawValue), description: "Should be DETACHED state")
-                    expect(states[4].rawValue).to(equal(ARTRealtimeChannelState.Failed.rawValue), description: "Should be FAILED state")
+                    expect(states[0].rawValue).to(equal(ARTChannelState.Attaching.rawValue), description: "Should be ATTACHING state")
+                    expect(states[1].rawValue).to(equal(ARTChannelState.Attached.rawValue), description: "Should be ATTACHED state")
+                    expect(states[2].rawValue).to(equal(ARTChannelState.Detaching.rawValue), description: "Should be DETACHING state")
+                    expect(states[3].rawValue).to(equal(ARTChannelState.Detached.rawValue), description: "Should be DETACHED state")
+                }
+
+                // RTL2a
+                it("should implement the EventEmitter and emit events for FAILED state changes") {
+                    let options = AblyTests.clientOptions()
+                    options.token = getTestToken(capability: "{\"secret\":[\"subscribe\"]}")
+                    let client = ARTRealtime(options: options)
+                    defer { client.dispose(); client.close() }
+                    let channel = client.channels.get("test")
+
+                    var states = [ARTChannelState]()
+                    waitUntil(timeout: testTimeout) { done in
+                        let pmError = AblyTests.newErrorProtocolMessage()
+                        channel.on { stateChange in
+                            guard let stateChange = stateChange else {
+                                fail("ChannelStateChange is nil"); done(); return
+                            }
+                            states += [stateChange.current]
+                        }
+                        channel.on(.Error) { stateChange in
+                            // Finish
+                            guard let stateChange = stateChange else {
+                                fail("ChannelStateChange is nil"); done(); return
+                            }
+                            guard let reason = stateChange.reason else {
+                                fail("Reason is nil"); done(); return
+                            }
+                            expect(reason.code) == 40160
+                            expect(stateChange.current).to(equal(ARTChannelState.Failed))
+                            done()
+                        }
+                        channel.attach()
+                    }
+
+                    if states.count != 3 {
+                        fail("Expecting 3 states; got \(states)")
+                        return
+                    }
+
+                    expect(states[0].rawValue).to(equal(ARTChannelState.Attaching.rawValue), description: "Should be ATTACHING state")
+                    expect(states[1].rawValue).to(equal(ARTChannelState.Failed.rawValue), description: "Should be FAILED state")
+                    // ERROR event
+                    expect(states[2].rawValue).to(equal(ARTChannelState.Failed.rawValue), description: "Should be FAILED state")
+                }
+
+                // RTL2a
+                it("should implement the EventEmitter and emit events for SUSPENDED state changes") {
+                    let client = ARTRealtime(options: AblyTests.commonAppSetup())
+                    defer { client.dispose(); client.close() }
+                    let channel = client.channels.get("test")
+
+                    waitUntil(timeout: testTimeout) { done in
+                        channel.attach() { error in
+                            expect(error).to(beNil())
+                            done()
+                        }
+                    }
+
+                    client.simulateSuspended(beforeSuspension: { done in
+                        channel.once(.Suspended) { stateChange in
+                            guard let stateChange = stateChange else {
+                                fail("ChannelStageChange is nil"); done(); return
+                            }
+                            expect(stateChange.reason).to(beNil())
+                            done()
+                        }
+                    })
                 }
 
                 // RTL2b
