@@ -953,6 +953,32 @@ class RealtimeClientChannel: QuickSpec {
                     }
                 }
 
+                // RTL5j
+                it("if the channel state is SUSPENDED, the @detach@ request transitions the channel immediately to the DETACHED state") {
+                    let client = ARTRealtime(options: AblyTests.commonAppSetup())
+                    defer { client.dispose(); client.close() }
+                    let channel = client.channels.get("foo")
+
+                    waitUntil(timeout: testTimeout) { done in
+                        channel.attach() { error in
+                            expect(error).to(beNil())
+                            done()
+                        }
+                    }
+
+                    client.onSuspended()
+                    expect(channel.state).to(equal(ARTRealtimeChannelState.Suspended))
+
+                    waitUntil(timeout: testTimeout) { done in
+                        channel.detach() { error in
+                            expect(error).to(beNil())
+                            done()
+                        }
+                    }
+
+                    expect(channel.state).to(equal(ARTRealtimeChannelState.Detached))
+                }
+
             }
 
             // RTL6
