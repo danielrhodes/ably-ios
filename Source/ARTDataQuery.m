@@ -54,7 +54,7 @@ static NSString *queryDirectionToString(ARTQueryDirection direction) {
     NSMutableArray *items = [super asQueryItems];
     if (self.untilAttach) {
         NSAssert(self.realtimeChannel, @"ARTRealtimeHistoryQuery used from outside ARTRealtimeChannel.history");
-        if (self.realtimeChannel.state != ARTRealtimeChannelAttached) {
+        if (self.realtimeChannel.state != ARTChannelStateAttached) {
             @throw [NSError errorWithDomain:ARTAblyErrorDomain code:ARTRealtimeHistoryErrorNotAttached userInfo:nil];
         }
         [items addObject:[NSURLQueryItem queryItemWithName:@"fromSerial" value:self.realtimeChannel.attachSerial]];

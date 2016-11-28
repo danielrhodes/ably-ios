@@ -94,7 +94,7 @@ class RealtimeClientChannels: QuickSpec {
                     waitUntil(timeout: testTimeout) { done in
                         client.channels.release("test") { errorInfo in
                             expect(errorInfo).to(beNil())
-                            expect(channel.state).to(equal(ARTRealtimeChannelState.Detached))
+                            expect(channel.state).to(equal(ARTChannelState.Detached))
                             done()
                         }
                     }

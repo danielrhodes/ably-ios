@@ -44,7 +44,7 @@
     if (self) {
         _realtime = realtime;
         _restChannel = [_realtime.rest.channels get:self.name options:options];
-        _state = ARTRealtimeChannelInitialized;
+        _state = ARTChannelStateInitialized;
         _queuedMessages = [NSMutableArray array];
         _attachSerial = nil;
         _presenceMap = [[ARTPresenceMap alloc] init];
@@ -149,17 +149,17 @@
             break;
     }
     switch (self.state) {
-        case ARTRealtimeChannelInitialized:
+        case ARTChannelStateInitialized:
             [self attach];
             // intentional fall-through
-        case ARTRealtimeChannelAttaching:
+        case ARTChannelStateAttaching:
         {
             [self addToQueue:pm callback:cb];
             break;
         }
-        case ARTRealtimeChannelDetaching:
-        case ARTRealtimeChannelDetached:
-        case ARTRealtimeChannelFailed:
+        case ARTChannelStateDetaching:
+        case ARTChannelStateDetached:
+        case ARTChannelStateFailed:
         {
             if (cb) {
                 ARTStatus *status = [ARTStatus state:ARTStateError info:[ARTErrorInfo createWithCode:90001 message:@"channel operation failed (invalid channel state)"]];
@@ -167,7 +167,7 @@
             }
             break;
         }
-        case ARTRealtimeChannelAttached:
+        case ARTChannelStateAttached:
         {
             if (_realtime.connection.state == ARTRealtimeConnected) {
                 [self sendMessage:pm callback:cb];
@@ -239,7 +239,7 @@
 }
 
 - (ARTEventListener<ARTMessage *> *)subscribeWithAttachCallback:(void (^)(ARTErrorInfo * _Nullable))onAttach callback:(void (^)(ARTMessage * _Nonnull))cb {
-    if (self.state == ARTRealtimeChannelFailed) {
+    if (self.state == ARTChannelStateFailed) {
         if (onAttach) onAttach([ARTErrorInfo createWithCode:0 message:@"attempted to subscribe while channel is in Failed state."]);
         return nil;
     }
@@ -252,7 +252,7 @@
 }
 
 - (ARTEventListener<ARTMessage *> *)subscribe:(NSString *)name onAttach:(void (^)(ARTErrorInfo * _Nullable))onAttach callback:(void (^)(ARTMessage * _Nonnull))cb {
-    if (self.state == ARTRealtimeChannelFailed) {
+    if (self.state == ARTChannelStateFailed) {
         if (onAttach) onAttach([ARTErrorInfo createWithCode:0 message:@"attempted to subscribe while channel is in Failed state."]);
         return nil;
     }
@@ -307,15 +307,15 @@
     return [self.statesEventEmitter timed:listener deadline:deadline onTimeout:onTimeout];
 }
 
-- (void)transition:(ARTRealtimeChannelState)state status:(ARTStatus *)status {
+- (void)transition:(ARTChannelState)state status:(ARTStatus *)status {
     self.state = state;
     _errorReason = status.errorInfo;
 
-    if (state == ARTRealtimeChannelFailed) {
+    if (state == ARTChannelStateFailed) {
         [_attachedEventEmitter emit:[NSNull null] with:status.errorInfo];
         [_detachedEventEmitter emit:[NSNull null] with:status.errorInfo];
     }
-    else if (state == ARTRealtimeChannelDetaching) {
+    else if (state == ARTChannelStateDetaching) {
         NSString *msg = @"channel is being DETACHED";
         [self.realtime.logger debug:__FILE__ line:__LINE__ message:@"R:%p C:%p %@", _realtime, self, msg];
         [_attachedEventEmitter emit:[NSNull null] with:[ARTErrorInfo createWithCode:90000 message:msg]];
@@ -333,7 +333,7 @@
 - (void)unlessStateChangesBefore:(NSTimeInterval)deadline do:(void(^)())callback {
     // Defer until next event loop execution so that any event emitted in the current
     // one doesn't cancel the timeout.
-    ARTRealtimeChannelState state = self.state;
+    ARTChannelState state = self.state;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0), dispatch_get_main_queue(), ^{
         if (state != self.state) {
             // Already changed; do nothing.
@@ -384,17 +384,17 @@
     }
 }
 
-- (ARTRealtimeChannelState)state {
+- (ARTChannelState)state {
     return _state;
 }
 
 - (void)setAttached:(ARTProtocolMessage *)message {
-    if (self.state == ARTRealtimeChannelFailed) {
+    if (self.state == ARTChannelStateFailed) {
         return;
     }
     self.attachSerial = message.channelSerial;
 
-    if (self.state == ARTRealtimeChannelAttached) {
+    if (self.state == ARTChannelStateAttached) {
         if (message.error != nil) {
             _errorReason = message.error;
             [self emit:ARTChannelEventError with:message.error];
@@ -411,16 +411,17 @@
 
     if (message.error) {
         _errorReason = message.error;
-        [self transition:ARTRealtimeChannelAttached status:[ARTStatus state:ARTStateError info:message.error]];
+        [self transition:ARTChannelStateAttached status:[ARTStatus state:ARTStateError info:message.error]];
     }
     else {
-        [self transition:ARTRealtimeChannelAttached status:[ARTStatus state:ARTStateOk]];
+        [self transition:ARTChannelStateAttached status:[ARTStatus state:ARTStateOk]];
     }
+
     [_attachedEventEmitter emit:[NSNull null] with:nil];
 }
 
 - (void)setDetached:(ARTProtocolMessage *)message {
-    if (self.state == ARTRealtimeChannelFailed) {
+    if (self.state == ARTChannelStateFailed) {
         return;
     }
     self.attachSerial = nil;
@@ -438,17 +439,17 @@
 
 - (void)detachChannel:(ARTStatus *)error {
     [self failQueuedMessages:error];
-    [self transition:ARTRealtimeChannelDetached status:error];
+    [self transition:ARTChannelStateDetached status:error];
 }
 
 - (void)setFailed:(ARTStatus *)error {
     [self failQueuedMessages:error];
-    [self transition:ARTRealtimeChannelFailed status:error];
+    [self transition:ARTChannelStateFailed status:error];
 }
 
 - (void)setSuspended:(ARTStatus *)error {
     [self failQueuedMessages:error];
-    [self transition:ARTRealtimeChannelDetached status:error];
+    [self transition:ARTChannelStateSuspended status:error];
 }
 
 - (void)onMessage:(ARTProtocolMessage *)message {
@@ -537,7 +538,7 @@
 }
 
 - (void)onError:(ARTProtocolMessage *)msg {
-    [self transition:ARTRealtimeChannelFailed status:[ARTStatus state:ARTStateError info: msg.error]];
+    [self transition:ARTChannelStateFailed status:[ARTStatus state:ARTStateError info: msg.error]];
     [self failQueuedMessages:[ARTStatus state:ARTStateError info: msg.error]];
 }
 
@@ -547,21 +548,21 @@
 
 - (void)attach:(void (^)(ARTErrorInfo * _Nullable))callback {
     switch (self.state) {
-        case ARTRealtimeChannelAttaching:
+        case ARTChannelStateAttaching:
             [self.realtime.logger debug:__FILE__ line:__LINE__ message:@"R:%p C:%p already attaching", _realtime, self];
             if (callback) [_attachedEventEmitter once:callback];
             return;
-        case ARTRealtimeChannelAttached:
+        case ARTChannelStateAttached:
             [self.realtime.logger debug:__FILE__ line:__LINE__ message:@"R:%p C:%p already attached", _realtime, self];
             if (callback) callback(nil);
             return;
-        case ARTRealtimeChannelDetaching: {
+        case ARTChannelStateDetaching: {
             NSString *msg = @"can't attach when in DETACHING state";
             [self.realtime.logger debug:__FILE__ line:__LINE__ message:@"R:%p C:%p %@", _realtime, self, msg];
             if (callback) callback([ARTErrorInfo createWithCode:90000 message:msg]);
             return;
         }
-        case ARTRealtimeChannelFailed:
+        case ARTChannelStateFailed:
             _errorReason = nil;
             break;
         default:
@@ -576,7 +577,7 @@
 
     if (callback) [_attachedEventEmitter once:callback];
     // Set state: Attaching
-    [self transition:ARTRealtimeChannelAttaching status:[ARTStatus state:ARTStateOk]];
+    [self transition:ARTChannelStateAttaching status:[ARTStatus state:ARTStateOk]];
 
     [self attachAfterChecks:callback];
 }
@@ -595,7 +596,7 @@
         ARTErrorInfo *errorInfo = [ARTErrorInfo createWithCode:ARTStateAttachTimedOut message:@"attach timed out"];
         ARTStatus *status = [ARTStatus state:ARTStateAttachTimedOut info:errorInfo];
         _errorReason = errorInfo;
-        [self transition:ARTRealtimeChannelFailed status:status];
+        [self transition:ARTChannelStateFailed status:status];
         [_attachedEventEmitter emit:[NSNull null] with:errorInfo];
     }];
 
@@ -612,19 +613,19 @@
 
 - (void)detach:(void (^)(ARTErrorInfo * _Nullable))callback {
     switch (self.state) {
-        case ARTRealtimeChannelInitialized:
+        case ARTChannelStateInitialized:
             [self.realtime.logger debug:__FILE__ line:__LINE__ message:@"R:%p C:%p can't detach when not attached", _realtime, self];
             if (callback) [_detachedEventEmitter once:callback];
             return;
-        case ARTRealtimeChannelDetaching:
+        case ARTChannelStateDetaching:
             [self.realtime.logger debug:__FILE__ line:__LINE__ message:@"R:%p C:%p already detaching", _realtime, self];
             if (callback) [_detachedEventEmitter once:callback];
             return;
-        case ARTRealtimeChannelDetached:
+        case ARTChannelStateDetached:
             [self.realtime.logger debug:__FILE__ line:__LINE__ message:@"R:%p C:%p already detached", _realtime, self];
             if (callback) callback(nil);
             return;
-        case ARTRealtimeChannelFailed:
+        case ARTChannelStateFailed:
             [self.realtime.logger debug:__FILE__ line:__LINE__ message:@"R:%p C:%p can't detach when in a failed state", _realtime, self];
             if (callback) callback([ARTErrorInfo createWithCode:90000 message:@"can't detach when in a failed state"]);
             return;
@@ -640,7 +641,7 @@
 
     if (callback) [_detachedEventEmitter once:callback];
     // Set state: Detaching
-    [self transition:ARTRealtimeChannelDetaching status:[ARTStatus state:ARTStateOk]];
+    [self transition:ARTChannelStateDetaching status:[ARTStatus state:ARTStateOk]];
 
     [self detachAfterChecks:callback];
 }
@@ -659,7 +660,7 @@
         ARTErrorInfo *errorInfo = [ARTErrorInfo createWithCode:ARTStateDetachTimedOut message:@"detach timed out"];
         ARTStatus *status = [ARTStatus state:ARTStateDetachTimedOut info:errorInfo];
         _errorReason = errorInfo;
-        [self transition:ARTRealtimeChannelFailed status:status];
+        [self transition:ARTChannelStateFailed status:status];
         [_detachedEventEmitter emit:[NSNull null] with:errorInfo];
     }];
 

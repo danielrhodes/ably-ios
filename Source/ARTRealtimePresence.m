@@ -51,8 +51,8 @@
     [_channel throwOnDisconnectedOrFailed];
 
     switch (_channel.state) {
-        case ARTRealtimeChannelFailed:
-        case ARTRealtimeChannelDetached:
+        case ARTChannelStateFailed:
+        case ARTChannelStateDetached:
             if (callback) callback(nil, [ARTErrorInfo createWithCode:0 message:@"invalid channel state"]);
             return;
         default:
@@ -196,7 +196,7 @@
 }
 
 - (ARTEventListener<ARTPresenceMessage *> *)subscribeWithAttachCallback:(void (^)(ARTErrorInfo * _Nullable))onAttach callback:(void (^)(ARTPresenceMessage * _Nonnull))cb {
-    if (_channel.state == ARTRealtimeChannelFailed) {
+    if (_channel.state == ARTChannelStateFailed) {
         if (onAttach) onAttach([ARTErrorInfo createWithCode:0 message:@"attempted to subscribe while channel is in Failed state."]);
         return nil;
     }
@@ -209,7 +209,7 @@
 }
 
 - (ARTEventListener<ARTPresenceMessage *> *)subscribe:(ARTPresenceAction)action onAttach:(void (^)(ARTErrorInfo * _Nullable))onAttach callback:(void (^)(ARTPresenceMessage * _Nonnull))cb {
-    if (_channel.state == ARTRealtimeChannelFailed) {
+    if (_channel.state == ARTChannelStateFailed) {
         if (onAttach) onAttach([ARTErrorInfo createWithCode:0 message:@"attempted to subscribe while channel is in Failed state."]);
         return nil;
     }

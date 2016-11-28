@@ -45,17 +45,19 @@ typedef NS_ENUM(NSUInteger, ARTRealtimeConnectionState) {
 };
 
 
-NSString *__art_nonnull ARTRealtimeStateToStr(ARTRealtimeConnectionState state);
+NSString *__art_nonnull ARTRealtimeConnectionStateToStr(ARTRealtimeConnectionState state);
 
-typedef NS_ENUM(NSUInteger, ARTRealtimeChannelState) {
-    ARTRealtimeChannelInitialized,
-    ARTRealtimeChannelAttaching,
-    ARTRealtimeChannelAttached,
-    ARTRealtimeChannelDetaching,
-    ARTRealtimeChannelDetached,
-    ARTRealtimeChannelSuspended,
-    ARTRealtimeChannelFailed
+typedef NS_ENUM(NSUInteger, ARTChannelState) {
+    ARTChannelStateInitialized,
+    ARTChannelStateAttaching,
+    ARTChannelStateAttached,
+    ARTChannelStateDetaching,
+    ARTChannelStateDetached,
+    ARTChannelStateSuspended,
+    ARTChannelStateFailed
 };
+
+NSString *__art_nonnull ARTChannelStateToStr(ARTChannelState state);
 
 typedef NS_ENUM(NSUInteger, ARTChannelEvent) {
     ARTChannelEventInitialized,
@@ -63,9 +65,12 @@ typedef NS_ENUM(NSUInteger, ARTChannelEvent) {
     ARTChannelEventAttached,
     ARTChannelEventDetaching,
     ARTChannelEventDetached,
+    ARTChannelEventSuspended,
     ARTChannelEventFailed,
     ARTChannelEventError
 };
+
+NSString *__art_nonnull ARTChannelEventToStr(ARTChannelEvent event);
 
 typedef NS_ENUM(NSInteger, ARTDataQueryError) {
     ARTDataQueryErrorLimit = 1,
@@ -114,6 +119,28 @@ NSString *generateNonce();
 @property (readonly, nonatomic) NSTimeInterval retryIn;
 
 @end
+
+#pragma mark - ARTChannelStateChange
+
+@interface ARTChannelStateChange : NSObject
+
+- (instancetype)initWithCurrent:(ARTChannelState)current
+                       previous:(ARTChannelState)previous
+                         reason:(ARTErrorInfo *__art_nullable)reason;
+
+- (instancetype)initWithCurrent:(ARTChannelState)current
+                       previous:(ARTChannelState)previous
+                         reason:(ARTErrorInfo *__art_nullable)reason
+                        resumed:(BOOL)resumed;
+
+@property (readonly, nonatomic) ARTChannelState current;
+@property (readonly, nonatomic) ARTChannelState previous;
+@property (readonly, nonatomic, art_nullable) ARTErrorInfo *reason;
+@property (readonly, nonatomic) BOOL resumed;
+
+@end
+
+#pragma mark - ARTJsonCompatible
 
 @protocol ARTJsonCompatible <NSObject>
 - (NSDictionary *__art_nullable)toJSON:(NSError *__art_nullable *__art_nullable)error;

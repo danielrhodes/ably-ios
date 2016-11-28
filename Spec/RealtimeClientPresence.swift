@@ -28,7 +28,7 @@ class RealtimeClientPresence: QuickSpec {
                     let channel = client.channels.get("test")
                     channel.attach()
 
-                    expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
+                    expect(channel.state).toEventually(equal(ARTChannelState.Attached), timeout: testTimeout)
 
                     let transport = client.transport as! TestProxyTransport
                     let attached = transport.protocolMessagesReceived.filter({ $0.action == .Attached })[0]
@@ -64,7 +64,7 @@ class RealtimeClientPresence: QuickSpec {
                     channel.attach()
 
                     expect(channel.presence.syncComplete).to(beFalse())
-                    expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
+                    expect(channel.state).toEventually(equal(ARTChannelState.Attached), timeout: testTimeout)
 
                     let transport = client.transport as! TestProxyTransport
                     let attached = transport.protocolMessagesReceived.filter({ $0.action == .Attached })[0]
@@ -288,7 +288,7 @@ class RealtimeClientPresence: QuickSpec {
                         channel2.presence.enterClient("Client 2", data: nil) { error in
                             expect(error).to(beNil())
                             expect(channel2.queuedMessages).to(haveCount(0))
-                            expect(channel2.state).to(equal(ARTRealtimeChannelState.Attached))
+                            expect(channel2.state).to(equal(ARTChannelState.Attached))
 
                             if channel2.presence.syncComplete {
                                 expect(channel2.presenceMap.members).to(haveCount(2))
@@ -373,17 +373,17 @@ class RealtimeClientPresence: QuickSpec {
                     defer { client.dispose(); client.close() }
                     let channel = client.channels.get("test")
 
-                    expect(channel.state).to(equal(ARTRealtimeChannelState.Initialized))
+                    expect(channel.state).to(equal(ARTChannelState.Initialized))
                     channel.presence.subscribe { _ in }
-                    expect(channel.state).to(equal(ARTRealtimeChannelState.Attaching))
-                    expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
+                    expect(channel.state).to(equal(ARTChannelState.Attaching))
+                    expect(channel.state).toEventually(equal(ARTChannelState.Attached), timeout: testTimeout)
 
                     channel.detach()
-                    expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Detached), timeout: testTimeout)
+                    expect(channel.state).toEventually(equal(ARTChannelState.Detached), timeout: testTimeout)
 
                     channel.presence.subscribe(.Present) { _ in }
-                    expect(channel.state).to(equal(ARTRealtimeChannelState.Attaching))
-                    expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
+                    expect(channel.state).to(equal(ARTChannelState.Attaching))
+                    expect(channel.state).toEventually(equal(ARTChannelState.Attached), timeout: testTimeout)
                 }
 
                 // RTP6c
@@ -393,7 +393,7 @@ class RealtimeClientPresence: QuickSpec {
 
                     let channel = client.channels.get("test")
                     channel.onError(AblyTests.newErrorProtocolMessage())
-                    expect(channel.state).to(equal(ARTRealtimeChannelState.Failed))
+                    expect(channel.state).to(equal(ARTChannelState.Failed))
 
                     waitUntil(timeout: testTimeout) { done in
                         channel.presence.subscribeWithAttachCallback({ errorInfo in
@@ -587,7 +587,7 @@ class RealtimeClientPresence: QuickSpec {
                         }
                     }
                     
-                    expect(channel.state).to(equal(ARTRealtimeChannelState.Detached))
+                    expect(channel.state).to(equal(ARTChannelState.Detached))
 
                     waitUntil(timeout: testTimeout) { done in
                         channel.presence.enter(nil) { error in
@@ -607,7 +607,7 @@ class RealtimeClientPresence: QuickSpec {
 
                     channel.onError(AblyTests.newErrorProtocolMessage())
 
-                    expect(channel.state).to(equal(ARTRealtimeChannelState.Failed))
+                    expect(channel.state).to(equal(ARTChannelState.Failed))
 
                     waitUntil(timeout: testTimeout) { done in
                         channel.presence.enter(nil) { error in
@@ -1123,15 +1123,15 @@ class RealtimeClientPresence: QuickSpec {
                     defer { client.dispose(); client.close() }
                     let channel = client.channels.get("test")
 
-                    expect(channel.state).to(equal(ARTRealtimeChannelState.Initialized))
+                    expect(channel.state).to(equal(ARTChannelState.Initialized))
                     waitUntil(timeout: testTimeout) { done in
                         channel.presence.enter("online") { error in
                             expect(error).to(beNil())
                             done()
                         }
-                        expect(channel.state).to(equal(ARTRealtimeChannelState.Attaching))
+                        expect(channel.state).to(equal(ARTChannelState.Attaching))
                     }
-                    expect(channel.state).to(equal(ARTRealtimeChannelState.Attached))
+                    expect(channel.state).to(equal(ARTChannelState.Attached))
                 }
 
                 // RTP8d
@@ -1151,7 +1151,7 @@ class RealtimeClientPresence: QuickSpec {
                             done()
                         }
                     }
-                    expect(channel.state).to(equal(ARTRealtimeChannelState.Failed))
+                    expect(channel.state).to(equal(ARTChannelState.Failed))
                 }
 
             }
@@ -1265,17 +1265,17 @@ class RealtimeClientPresence: QuickSpec {
                     defer { client.dispose(); client.close() }
                     let channel = client.channels.get("test")
 
-                    expect(channel.state).to(equal(ARTRealtimeChannelState.Initialized))
+                    expect(channel.state).to(equal(ARTChannelState.Initialized))
                     channel.presence.subscribe { _ in }
-                    expect(channel.state).to(equal(ARTRealtimeChannelState.Attaching))
-                    expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
+                    expect(channel.state).to(equal(ARTChannelState.Attaching))
+                    expect(channel.state).toEventually(equal(ARTChannelState.Attached), timeout: testTimeout)
 
                     channel.detach()
-                    expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Detached), timeout: testTimeout)
+                    expect(channel.state).toEventually(equal(ARTChannelState.Detached), timeout: testTimeout)
 
                     channel.presence.subscribe(.Present) { _ in }
-                    expect(channel.state).to(equal(ARTRealtimeChannelState.Attaching))
-                    expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
+                    expect(channel.state).to(equal(ARTChannelState.Attaching))
+                    expect(channel.state).toEventually(equal(ARTChannelState.Attached), timeout: testTimeout)
                 }
 
                 // RTP6c
@@ -1464,16 +1464,16 @@ class RealtimeClientPresence: QuickSpec {
                         defer { client.dispose(); client.close() }
                         let channel = client.channels.get("test")
 
-                        expect(channel.state).to(equal(ARTRealtimeChannelState.Initialized))
+                        expect(channel.state).to(equal(ARTChannelState.Initialized))
                         waitUntil(timeout: testTimeout) { done in
                             //Call: enterClient, updateClient and leaveClient
                             performMethod(channel.presence) { errorInfo in
                                 expect(errorInfo).to(beNil())
                                 done()
                             }
-                            expect(channel.state).to(equal(ARTRealtimeChannelState.Attaching))
+                            expect(channel.state).to(equal(ARTChannelState.Attaching))
                         }
-                        expect(channel.state).to(equal(ARTRealtimeChannelState.Attached))
+                        expect(channel.state).to(equal(ARTChannelState.Attached))
                     }
 
                     it("should result in an error if the channel is in the FAILED state") {
@@ -1728,16 +1728,16 @@ class RealtimeClientPresence: QuickSpec {
                     defer { client.dispose(); client.close() }
                     let channel = client.channels.get("test")
 
-                    expect(channel.state).to(equal(ARTRealtimeChannelState.Initialized))
+                    expect(channel.state).to(equal(ARTChannelState.Initialized))
                     waitUntil(timeout: testTimeout) { done in
                         channel.presence.get() { membersPage, error in
                             expect(error).to(beNil())
                             expect(membersPage).toNot(beNil())
                             done()
                         }
-                        expect(channel.state).to(equal(ARTRealtimeChannelState.Attaching))
+                        expect(channel.state).to(equal(ARTChannelState.Attaching))
                     }
-                    expect(channel.state).to(equal(ARTRealtimeChannelState.Attached))
+                    expect(channel.state).to(equal(ARTChannelState.Attached))
                 }
 
                 // RTP11b
@@ -1756,7 +1756,7 @@ class RealtimeClientPresence: QuickSpec {
                         fail("Channel error is empty"); return
                     }
                     expect(channelError.message).to(equal(protocolError.message))
-                    expect(channel.state).to(equal(ARTRealtimeChannelState.Failed))
+                    expect(channel.state).to(equal(ARTChannelState.Failed))
 
                     waitUntil(timeout: testTimeout) { done in
                         channel.presence.get() { members, error in
@@ -1765,7 +1765,7 @@ class RealtimeClientPresence: QuickSpec {
                             }
                             expect(error.message).to(equal("invalid channel state"))
                             expect(channel.errorReason).to(equal(protocolError))
-                            expect(channel.state).to(equal(ARTRealtimeChannelState.Failed))
+                            expect(channel.state).to(equal(ARTChannelState.Failed))
                             expect(members).to(beNil())
                             done()
                         }
@@ -1794,7 +1794,7 @@ class RealtimeClientPresence: QuickSpec {
                         channel.onError(pm)
                     }
 
-                    expect(channel.state).to(equal(ARTRealtimeChannelState.Failed))
+                    expect(channel.state).to(equal(ARTChannelState.Failed))
                 }
 
                 // RTP11b
@@ -1818,7 +1818,7 @@ class RealtimeClientPresence: QuickSpec {
                             }
                             expect(error.message).to(equal("invalid channel state"))
                             expect(members).to(beNil())
-                            expect(channel.state).to(equal(ARTRealtimeChannelState.Detached))
+                            expect(channel.state).to(equal(ARTChannelState.Detached))
                             done()
                         }
                     }
@@ -1846,7 +1846,7 @@ class RealtimeClientPresence: QuickSpec {
                         }
                     }
 
-                    expect(channel.state).to(equal(ARTRealtimeChannelState.Detached))
+                    expect(channel.state).to(equal(ARTChannelState.Detached))
                 }
 
                 // RTP11c
@@ -2088,7 +2088,7 @@ class RealtimeClientPresence: QuickSpec {
                             query.untilAttach = caseItem.untilAttach
 
                             channel.attach()
-                            expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
+                            expect(channel.state).toEventually(equal(ARTChannelState.Attached), timeout: testTimeout)
 
                             waitUntil(timeout: testTimeout) { done in
                                 try! channel.presence.history(query) { _, errorInfo in
@@ -2180,7 +2180,7 @@ class RealtimeClientPresence: QuickSpec {
                 channel.attach()
 
                 expect(channel.presence.syncComplete).to(beFalse())
-                expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
+                expect(channel.state).toEventually(equal(ARTChannelState.Attached), timeout: testTimeout)
 
                 let transport = client.transport as! TestProxyTransport
                 transport.beforeProcessingReceivedMessage = { protocolMessage in

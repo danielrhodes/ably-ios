@@ -497,7 +497,7 @@ class RealtimeClientConnection: QuickSpec {
                 TotalReach.shared = 0
                 for client in disposable {
                     let channel = client.channels.get(channelName)
-                    expect(channel.state).to(equal(ARTRealtimeChannelState.Attached))
+                    expect(channel.state).to(equal(ARTChannelState.Attached))
 
                     channel.subscribe { message in
                         expect(message.data as? String).to(equal("message_string"))
@@ -860,7 +860,7 @@ class RealtimeClientConnection: QuickSpec {
                         transport.actionsIgnored += [.Ack, .Nack]
 
                         channel.attach()
-                        expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
+                        expect(channel.state).toEventually(equal(ARTChannelState.Attached), timeout: testTimeout)
 
                         var gotPublishedCallback = false
                         channel.publish(nil, data: "message", callback: { errorInfo in
@@ -1098,7 +1098,7 @@ class RealtimeClientConnection: QuickSpec {
 
                     // Attach first to avoid bundling publishes in the same ProtocolMessage.
                     channel.attach()
-                    expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
+                    expect(channel.state).toEventually(equal(ARTChannelState.Attached), timeout: testTimeout)
 
                     waitUntil(timeout: testTimeout) { done in
                         let partialDone = AblyTests.splitDone((1...5).count, done: done)
@@ -1887,7 +1887,7 @@ class RealtimeClientConnection: QuickSpec {
                         fail("Shouldn't receive the messsage")
                     }
 
-                    expect(channel1.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
+                    expect(channel1.state).toEventually(equal(ARTChannelState.Attached), timeout: testTimeout)
 
                     let firstConnection: (id: String, key: String) = (client1.connection.id!, client1.connection.key!)
 
@@ -1972,7 +1972,7 @@ class RealtimeClientConnection: QuickSpec {
                                 done()
                             }
                         }
-                        expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
+                        expect(channel.state).toEventually(equal(ARTChannelState.Attached), timeout: testTimeout)
                         expect(client.queuedMessages).toEventually(haveCount(0), timeout: testTimeout)
                     }
 
@@ -2023,16 +2023,17 @@ class RealtimeClientConnection: QuickSpec {
                         }
 
                         waitUntil(timeout: testTimeout) { done in
-                            channel.once(.Attached) { error in
-                                guard let error = error else {
+                            channel.once(.Attached) { stateChange in
+                                guard let error = stateChange?.reason else {
                                     fail("Error is nil"); done(); return
                                 }
-                                expect(error.message).to(equal("Channel injected error"))
+                                expect(error.message).to(contain("Channel injected error"))
                                 expect(channel.errorReason).to(beIdenticalTo(error))
                                 done()
                             }
                         }
 
+                        expect(channel.state).to(equal(ARTChannelState.Attached))
                         expect(client.queuedMessages).toEventually(haveCount(0), timeout: testTimeout)
                     }
 
@@ -2064,7 +2065,7 @@ class RealtimeClientConnection: QuickSpec {
                                 done()
                             }
                         }
-                        expect(channel.state).to(equal(ARTRealtimeChannelState.Detached))
+                        expect(channel.state).to(equal(ARTChannelState.Detached))
                         guard let channelError = channel.errorReason else {
                             fail("Channel error is nil"); return
                         }
@@ -2102,7 +2103,7 @@ class RealtimeClientConnection: QuickSpec {
                                 done()
                             }
                         }
-                        expect(channel.state).to(equal(ARTRealtimeChannelState.Failed))
+                        expect(channel.state).to(equal(ARTChannelState.Failed))
                         expect(channel.errorReason).to(beIdenticalTo(protocolError.error))
                     }
 
@@ -2240,7 +2241,7 @@ class RealtimeClientConnection: QuickSpec {
                         let channel = client.channels.get("test")
 
                         channel.attach()
-                        expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
+                        expect(channel.state).toEventually(equal(ARTChannelState.Attached), timeout: testTimeout)
 
                         client.onDisconnected()
 
@@ -2319,7 +2320,7 @@ class RealtimeClientConnection: QuickSpec {
 
                     client.simulateLostConnectionAndState()
 
-                    expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Detached), timeout: testTimeout)
+                    expect(channel.state).toEventually(equal(ARTChannelState.Detached), timeout: testTimeout)
                     expect(channel.errorReason!.message).to(contain("Unable to recover connection"))
                 }
 
@@ -2998,12 +2999,12 @@ class RealtimeClientConnection: QuickSpec {
                     let channel = client.channels.get("test")
                     channel.attach()
 
-                    expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
+                    expect(channel.state).toEventually(equal(ARTChannelState.Attached), timeout: testTimeout)
 
                     client.onDisconnected()
 
                     expect(client.connection.state).to(equal(ARTRealtimeConnectionState.Disconnected))
-                    expect(channel.state).to(equal(ARTRealtimeChannelState.Attached))
+                    expect(channel.state).to(equal(ARTChannelState.Attached))
 
                     waitUntil(timeout: testTimeout + options.disconnectedRetryTimeout) { done in
                         channel.publish(nil, data: "queuedMessage", callback: { errorInfo in
@@ -3029,12 +3030,12 @@ class RealtimeClientConnection: QuickSpec {
                         let channel = client.channels.get("test")
                         channel.attach()
 
-                        expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
+                        expect(channel.state).toEventually(equal(ARTChannelState.Attached), timeout: testTimeout)
 
                         client.simulateSuspended()
 
                         expect(client.connection.state).to(equal(ARTRealtimeConnectionState.Suspended))
-                        expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Detached), timeout: testTimeout)
+                        expect(channel.state).toEventually(equal(ARTChannelState.Detached), timeout: testTimeout)
 
                         waitUntil(timeout: testTimeout) { done in
                             // Reject publishing of messages
@@ -3047,7 +3048,7 @@ class RealtimeClientConnection: QuickSpec {
 
                         expect(client.connection.state).toEventually(equal(ARTRealtimeConnectionState.Connecting), timeout: options.suspendedRetryTimeout + 1.0)
                         channel.attach()
-                        expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
+                        expect(channel.state).toEventually(equal(ARTChannelState.Attached), timeout: testTimeout)
 
                         waitUntil(timeout: testTimeout) { done in
                             // Accept publishing of messages
@@ -3068,12 +3069,12 @@ class RealtimeClientConnection: QuickSpec {
                         let channel = client.channels.get("test")
                         channel.attach()
                         
-                        expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
+                        expect(channel.state).toEventually(equal(ARTChannelState.Attached), timeout: testTimeout)
                         
                         client.close()
                         
                         expect(client.connection.state).toEventually(equal(ARTRealtimeConnectionState.Closed), timeout: testTimeout)
-                        expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Detached), timeout: testTimeout)
+                        expect(channel.state).toEventually(equal(ARTChannelState.Detached), timeout: testTimeout)
                         
                         waitUntil(timeout: testTimeout) { done in
                             // Reject publishing of messages
@@ -3098,12 +3099,12 @@ class RealtimeClientConnection: QuickSpec {
                     let channel = client.channels.get("test")
                     channel.attach()
                     
-                    expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
+                    expect(channel.state).toEventually(equal(ARTChannelState.Attached), timeout: testTimeout)
                     
                     client.onError(AblyTests.newErrorProtocolMessage())
                     
                     expect(client.connection.state).to(equal(ARTRealtimeConnectionState.Failed))
-                    expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Failed), timeout: testTimeout)
+                    expect(channel.state).toEventually(equal(ARTChannelState.Failed), timeout: testTimeout)
                     
                     waitUntil(timeout: testTimeout) { done in
                         // Reject publishing of messages
@@ -3208,7 +3209,7 @@ class RealtimeClientConnection: QuickSpec {
                             expect(newTransport.protocolMessagesSent.filter{ $0.action == .Attach }).to(haveCount(1))
                             done()
                         }
-                        expect(channel.state).to(equal(ARTRealtimeChannelState.Attaching))
+                        expect(channel.state).to(equal(ARTChannelState.Attaching))
                         transport.ignoreSends = false
                         client.onDisconnected()
                     }
@@ -3241,7 +3242,7 @@ class RealtimeClientConnection: QuickSpec {
                             expect(newTransport.protocolMessagesSent.filter{ $0.action == .Detach }).to(haveCount(1))
                             done()
                         }
-                        expect(channel.state).to(equal(ARTRealtimeChannelState.Detaching))
+                        expect(channel.state).to(equal(ARTChannelState.Detaching))
                         transport.ignoreSends = false
                         client.onDisconnected()
                     }
@@ -3418,7 +3419,7 @@ class RealtimeClientConnection: QuickSpec {
                     let channel = client.channels.get("test")
                     channel.attach()
 
-                    expect(channel.state).toEventually(equal(ARTRealtimeChannelState.Attached), timeout: testTimeout)
+                    expect(channel.state).toEventually(equal(ARTChannelState.Attached), timeout: testTimeout)
                     if channel.state != .Attached {
                         return
                     }

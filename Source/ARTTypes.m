@@ -62,10 +62,10 @@ NSString *generateNonce() {
 }
 
 - (NSString *)description {
-    return [NSString stringWithFormat:@"%@ - \n\t current: %@; \n\t previous: %@; \n\t reason: %@; \n\t retryIn: %f; \n", [super description], ARTRealtimeStateToStr(_current), ARTRealtimeStateToStr(_previous), _reason, _retryIn];
+    return [NSString stringWithFormat:@"%@ - \n\t current: %@; \n\t previous: %@; \n\t reason: %@; \n\t retryIn: %f; \n", [super description], ARTRealtimeConnectionStateToStr(_current), ARTRealtimeConnectionStateToStr(_previous), _reason, _retryIn];
 }
 
-NSString *ARTRealtimeStateToStr(ARTRealtimeConnectionState state) {
+NSString *ARTRealtimeConnectionStateToStr(ARTRealtimeConnectionState state) {
     switch(state)
     {
         case ARTRealtimeInitialized:
@@ -94,6 +94,75 @@ NSString *ARTRealtimeStateToStr(ARTRealtimeConnectionState state) {
 }
 
 @end
+
+#pragma mark - ARTChannelStateChange
+
+@implementation ARTChannelStateChange
+
+- (instancetype)initWithCurrent:(ARTChannelState)current previous:(ARTChannelState)previous reason:(ARTErrorInfo *)reason {
+    return [self initWithCurrent:current previous:previous reason:reason resumed:NO];
+}
+
+- (instancetype)initWithCurrent:(ARTChannelState)current previous:(ARTChannelState)previous reason:(ARTErrorInfo *)reason resumed:(BOOL)resumed {
+    self = [self init];
+    if (self) {
+        _current = current;
+        _previous = previous;
+        _reason = reason;
+        _resumed = resumed;
+    }
+    return self;
+}
+
+- (NSString *)description {
+    return [NSString stringWithFormat:@"%@ - \n\t current: %@; \n\t previous: %@; \n\t reason: %@; \n\t resumed: %d; \n", [super description], ARTChannelStateToStr(_current), ARTChannelStateToStr(_previous), _reason, _resumed];
+}
+
+NSString *ARTChannelStateToStr(ARTChannelState state) {
+    switch(state)
+    {
+        case ARTChannelStateInitialized:
+            return @"Initialized"; //0
+        case ARTChannelStateAttaching:
+            return @"Attaching"; //1
+        case ARTChannelStateAttached:
+            return @"Attached"; //2
+        case ARTChannelStateDetaching:
+            return @"Detaching"; //3
+        case ARTChannelStateDetached:
+            return @"Detached"; //4
+        case ARTChannelStateSuspended:
+            return @"Suspended"; //5
+        case ARTChannelStateFailed:
+            return @"Failed"; //6
+    }
+}
+
+NSString *ARTChannelEventToStr(ARTChannelEvent event) {
+    switch(event)
+    {
+        case ARTChannelEventInitialized:
+            return @"Initialized"; //0
+        case ARTChannelEventAttaching:
+            return @"Attaching"; //1
+        case ARTChannelEventAttached:
+            return @"Attached"; //2
+        case ARTChannelEventDetaching:
+            return @"Detaching"; //3
+        case ARTChannelEventDetached:
+            return @"Detached"; //4
+        case ARTChannelEventSuspended:
+            return @"Suspended"; //5
+        case ARTChannelEventFailed:
+            return @"Failed"; //6
+        case ARTChannelEventError:
+            return @"Error"; //7
+    }
+}
+
+@end
+
+#pragma mark - ARTJsonCompatible
 
 @implementation NSString (ARTJsonCompatible)
 

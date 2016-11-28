@@ -21,7 +21,7 @@ ART_ASSUME_NONNULL_BEGIN
 
 @interface ARTRealtimeChannel : ARTChannel
 
-@property (readwrite, assign, nonatomic) ARTRealtimeChannelState state;
+@property (readwrite, assign, nonatomic) ARTChannelState state;
 @property (readonly, strong, nonatomic, art_nullable) ARTErrorInfo *errorReason;
 @property (readonly, getter=getPresence) ARTRealtimePresence *presence;
 

@@ -38,7 +38,7 @@ ART_ASSUME_NONNULL_BEGIN
 
 @interface ARTRealtimeChannel (Private)
 
-- (void)transition:(ARTRealtimeChannelState)state status:(ARTStatus *)status;
+- (void)transition:(ARTChannelState)state status:(ARTStatus *)status;
 
 - (void)onChannelMessage:(ARTProtocolMessage *)message;
 - (void)publishPresence:(ARTPresenceMessage *)pm callback:(art_nullable void (^)(ARTErrorInfo *__art_nullable))cb;
