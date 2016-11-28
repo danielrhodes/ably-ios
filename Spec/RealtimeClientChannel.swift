@@ -1201,6 +1201,34 @@ class RealtimeClientChannel: QuickSpec {
                                 expect(channel.queuedMessages).to(haveCount(1))
                             }
                         }
+
+                        it("ATTACHED") {
+                            client.connect()
+                            expect(client.connection.state).toEventually(equal(ARTRealtimeConnectionState.Connected), timeout: testTimeout)
+
+                            waitUntil(timeout: testTimeout) { done in
+                                let tokenParams = ARTTokenParams()
+                                tokenParams.ttl = 5.0
+                                client.auth.authorize(tokenParams, options: nil) { tokenDetails, error in
+                                    expect(error).to(beNil())
+                                    expect(tokenDetails).toNot(beNil())
+                                    done()
+                                }
+                            }
+
+                            waitUntil(timeout: testTimeout) { done in
+                                client.connection.once(.Disconnected) { _ in
+                                    done()
+                                }
+                            }
+
+                            expect(channel.state).to(equal(ARTRealtimeChannelState.Attached))
+
+                            waitUntil(timeout: testTimeout) { done in
+                                publish(done)
+                                expect(channel.queuedMessages).to(haveCount(1))
+                            }
+                        }
                     }
 
                     // RTL6c3
