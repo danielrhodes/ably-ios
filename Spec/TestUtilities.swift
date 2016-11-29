@@ -948,11 +948,17 @@ extension ARTRealtime {
         self.onDisconnected()
     }
 
-    func simulateSuspended() {
+    func simulateSuspended(beforeSuspension callback: ((done: () -> ()) -> Void)? = nil) {
         waitUntil(timeout: testTimeout) { done in
             self.connection.on(.Closed) { _ in
-                self.onSuspended()
-                done()
+                if let performCallback = callback {
+                    performCallback(done: done)
+                    self.onSuspended()
+                }
+                else {
+                    self.onSuspended()
+                    done()
+                }
             }
             self.close()
         }
