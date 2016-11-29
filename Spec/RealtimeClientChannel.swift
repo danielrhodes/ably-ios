@@ -2407,6 +2407,61 @@ class RealtimeClientChannel: QuickSpec {
                         expect(transport.protocolMessagesSent.filter{ $0.action == .Attach }).to(haveCount(2))
                     }
 
+                    // RTL13b
+                    it("if the attempt to re-attach fails, or if the channel was already in the ATTACHING state, the channel will transition to the SUSPENDED state and the error will be emitted in the ChannelStateChange event") {
+                        let options = AblyTests.commonAppSetup()
+                        options.channelRetryTimeout = 1.0
+                        let client = AblyTests.newRealtime(options)
+                        defer { client.dispose(); client.close() }
+                        let channel = client.channels.get("foo")
+
+                        waitUntil(timeout: testTimeout) { done in
+                            channel.attach { error in
+                                expect(error).to(beNil())
+                                done()
+                            }
+                        }
+
+                        guard let transport = client.transport as? TestProxyTransport else {
+                            fail("TestProxyTransport is not set"); return
+                        }
+
+                        transport.actionsIgnored = [.Attached]
+
+                        waitUntil(timeout: testTimeout) { done in
+                            let detachedMessageWithError = AblyTests.newErrorProtocolMessage()
+                            detachedMessageWithError.action = .Detached
+                            detachedMessageWithError.channel = "foo"
+
+                            channel.once(.Attaching) { stateChange in
+                                guard let error = stateChange?.reason  else {
+                                    fail("Reason error is nil"); done(); return
+                                }
+                                expect(stateChange.reason).to(beIdenticalTo(detachedMessageWithError.error))
+                                expect(channel.errorReason).to(beNil())
+                                done()
+                            }
+
+                            transport.receive(detachedMessageWithError)
+                        }
+
+                        waitUntil(timeout: testTimeout) { done in
+                            channel.once(.Suspended) { stateChange in
+                                guard let error = stateChange?.reason  else {
+                                    fail("Reason error is nil"); done(); return
+                                }
+                                expect(stateChange.reason).to(beIdenticalTo(detachedMessageWithError.error))
+                                expect(channel.errorReason).to(beIdenticalTo(detachedMessageWithError.error))
+                                done()
+                            }
+                        }
+
+                        waitUntil(timeout: testTimeout) { done in
+                            channel.once(.Attaching) { _ in
+                                done()
+                            }
+                        }
+                    }
                 }
 
             }
