@@ -43,13 +43,13 @@
             ARTRealtimeChannel *channel = [realtime.channels get:@"attach"];
 
             __block bool hasAttached = false;
-            [channel on:^(ARTErrorInfo *errorInfo) {
+            [channel on:^(ARTChannelStateChange *stateChange) {
                 if(channel.state == ARTRealtimeChannelAttaching) {
-                    XCTAssertNil(errorInfo);
+                    XCTAssertNil(stateChange.reason);
                     [channel attach];
                 }
                 if (channel.state == ARTRealtimeChannelAttached) {
-                    XCTAssertNil(errorInfo);
+                    XCTAssertNil(stateChange.reason);
                     [channel attach];
                     
                     if(!hasAttached) {
@@ -80,12 +80,12 @@
     [channel1 attach];
     ARTRealtimeChannel *channel2 = [realtime.channels get:@"test_attach_multiple2"];
     [channel2 attach];
-    [channel1 on:^(ARTErrorInfo *errorInfo) {
+    [channel1 on:^(ARTChannelStateChange *stateChange) {
         if (channel1.state == ARTRealtimeChannelAttached) {
             [expectation1 fulfill];
         }
     }];
-    [channel2 on:^(ARTErrorInfo *errorInfo) {
+    [channel2 on:^(ARTChannelStateChange *stateChange) {
         if (channel2.state == ARTRealtimeChannelAttached) {
             [expectation2 fulfill];
         }
@@ -102,7 +102,7 @@
         ARTRealtimeConnectionState state = stateChange.current;
         if (state == ARTRealtimeConnected) {
             ARTRealtimeChannel *channel = [realtime.channels get:@"detach"];
-            [channel on:^(ARTErrorInfo *errorInfo) {
+            [channel on:^(ARTChannelStateChange *stateChange) {
                 if (channel.state == ARTRealtimeChannelAttached) {
                     [channel detach];
                 }
@@ -126,7 +126,7 @@
         ARTRealtimeConnectionState state = stateChange.current;
         if (state == ARTRealtimeConnected) {
             ARTRealtimeChannel *channel = [realtime.channels get:@"detach"];
-            [channel on:^(ARTErrorInfo *errorInfo) {
+            [channel on:^(ARTChannelStateChange *stateChange) {
                 if (channel.state == ARTRealtimeChannelAttached) {
                     [channel detach];
                 }
@@ -154,7 +154,7 @@
     __weak XCTestExpectation *expectation = [self expectationWithDescription:[NSString stringWithFormat:@"%s", __FUNCTION__]];
     ARTRealtime *realtime = [[ARTRealtime alloc] initWithOptions:options];
     ARTRealtimeChannel *channel = [realtime.channels get:@"attaching_to_detaching"];
-    [channel on:^(ARTErrorInfo *errorInfo) {
+    [channel on:^(ARTChannelStateChange *stateChange) {
         if (channel.state == ARTRealtimeChannelAttached) {
             XCTFail(@"Should not have made it to attached");
         }
@@ -184,7 +184,7 @@
         
         if (state == ARTRealtimeConnected) {
             ARTRealtimeChannel *channel = [realtime.channels get:@"testDetachingIgnoresDetach"];
-            [channel on:^(ARTErrorInfo *errorInfo) {
+            [channel on:^(ARTChannelStateChange *stateChange) {
 
                 if (channel.state == ARTRealtimeChannelAttached) {
                     [channel detach];
@@ -212,15 +212,15 @@
         if (state == ARTRealtimeConnected) {
             ARTRealtimeChannel *channel = [realtime.channels get:@"attach"];
             __block bool hasFailed = false;
-            [channel on:^(ARTErrorInfo *errorInfo) {
+            [channel on:^(ARTChannelStateChange *stateChange) {
                 if (channel.state == ARTRealtimeChannelAttached) {
                     if(!hasFailed) {
-                        XCTAssertNil(errorInfo);
+                        XCTAssertNil(stateChange.reason);
                         [realtime onError:[ARTTestUtil newErrorProtocolMessage]];
                     }
                 }
                 else if(channel.state == ARTRealtimeChannelFailed) {
-                    XCTAssertNotNil(errorInfo);
+                    XCTAssertNotNil(stateChange.reason);
                     [channel attach:^(ARTErrorInfo *errorInfo) {
                         XCTAssertNotNil(errorInfo);
                         [expectation fulfill];
@@ -253,7 +253,7 @@
     __weak XCTestExpectation *expectation = [self expectationWithDescription:[NSString stringWithFormat:@"%s", __FUNCTION__]];
     ARTRealtime *realtime = [[ARTRealtime alloc] initWithOptions:options];
     ARTRealtimeChannel *channel = [realtime.channels get:@"some_unpermitted_channel"];
-    [channel on:^(ARTErrorInfo *errorInfo) {
+    [channel on:^(ARTChannelStateChange *stateChange) {
         if(channel.state != ARTRealtimeChannelAttaching) {
             XCTAssertEqual(channel.state, ARTRealtimeChannelFailed);
             [expectation fulfill];
@@ -270,7 +270,7 @@
     __weak XCTestExpectation *expectation = [self expectationWithDescription:[NSString stringWithFormat:@"%s", __FUNCTION__]];
     ARTRealtime *realtime = [[ARTRealtime alloc] initWithOptions:options];
     ARTRealtimeChannel *channel1 = [realtime.channels get:@"channel"];
-    [channel1 on:^(ARTErrorInfo *errorInfo) {
+    [channel1 on:^(ARTChannelStateChange *stateChange) {
         if (channel1.state == ARTRealtimeChannelAttaching) {
             [realtime onError:[ARTTestUtil newErrorProtocolMessage]];
         }
@@ -289,7 +289,7 @@
     __weak XCTestExpectation *expectation = [self expectationWithDescription:[NSString stringWithFormat:@"%s", __FUNCTION__]];
     ARTRealtime *realtime = [[ARTRealtime alloc] initWithOptions:options];
     ARTRealtimeChannel *channel1 = [realtime.channels get:@"channel"];
-    [channel1 on:^(ARTErrorInfo *errorInfo) {
+    [channel1 on:^(ARTChannelStateChange *stateChange) {
         if (channel1.state == ARTRealtimeChannelAttached) {
             [realtime onError:[ARTTestUtil newErrorProtocolMessage]];
         }
@@ -308,7 +308,7 @@
     __weak XCTestExpectation *expectation = [self expectationWithDescription:[NSString stringWithFormat:@"%s", __FUNCTION__]];
     ARTRealtime *realtime = [[ARTRealtime alloc] initWithOptions:options];
     ARTRealtimeChannel *channel1 = [realtime.channels get:@"channel"];
-    [channel1 on:^(ARTErrorInfo *errorInfo) {
+    [channel1 on:^(ARTChannelStateChange *stateChange) {
         if (channel1.state == ARTRealtimeChannelAttached) {
             [realtime close];
         }

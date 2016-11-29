@@ -353,18 +353,16 @@ class RealtimeClientChannel: QuickSpec {
                         expect(channel.state).to(equal(ARTChannelState.Attaching))
 
                         waitUntil(timeout: testTimeout) { done in
-                            let error = AblyTests.newErrorProtocolMessage()
-                            channel.on { errorInfo in
-                                if channel.state == .Failed {
-                                    guard let errorInfo = errorInfo else {
-                                        fail("errorInfo is nil"); done(); return
-                                    }
-                                    expect(errorInfo).to(equal(error.error))
-                                    expect(channel.errorReason).to(equal(errorInfo))
-                                    done()
+                            let pmError = AblyTests.newErrorProtocolMessage()
+                            channel.once(.Failed) { stateChange in
+                                guard let error = stateChange?.reason else {
+                                    fail("Reason error is nil"); done(); return
                                 }
+                                expect(error).to(equal(pmError.error))
+                                expect(channel.errorReason).to(equal(error))
+                                done()
                             }
-                            client.onError(error)
+                            client.onError(pmError)
                         }
                         expect(channel.state).to(equal(ARTChannelState.Failed))
                     }
@@ -378,18 +376,16 @@ class RealtimeClientChannel: QuickSpec {
                         expect(channel.state).toEventually(equal(ARTChannelState.Attached), timeout: testTimeout)
 
                         waitUntil(timeout: testTimeout) { done in
-                            let error = AblyTests.newErrorProtocolMessage()
-                            channel.on { errorInfo in
-                                if channel.state == .Failed {
-                                    guard let errorInfo = errorInfo else {
-                                        fail("errorInfo is nil"); done(); return
-                                    }
-                                    expect(errorInfo).to(equal(error.error))
-                                    expect(channel.errorReason).to(equal(errorInfo))
-                                    done()
+                            let pmError = AblyTests.newErrorProtocolMessage()
+                            channel.once(.Failed) { stateChange in
+                                guard let error = stateChange?.reason else {
+                                    fail("Reason error is nil"); done(); return
                                 }
+                                expect(error).to(equal(pmError.error))
+                                expect(channel.errorReason).to(equal(error))
+                                done()
                             }
-                            client.onError(error)
+                            client.onError(pmError)
                         }
                         expect(channel.state).to(equal(ARTChannelState.Failed))
                     }
@@ -728,13 +724,17 @@ class RealtimeClientChannel: QuickSpec {
                     let channel = client.channels.get("test")
                     channel.attach()
 
-                    channel.on { errorInfo in
-                        if channel.state == .Failed {
-                            expect(errorInfo!.code).to(equal(40160))
+                    waitUntil(timeout: testTimeout) { done in
+                        channel.once(.Failed) { stateChange in
+                            guard let error = stateChange?.reason else {
+                                fail("Reason error is nil"); done(); return
+                            }
+                            expect(error.code).to(equal(40160))
+                            done()
                         }
                     }
 
-                    expect(channel.state).toEventually(equal(ARTChannelState.Failed), timeout: testTimeout)
+                    expect(channel.state).to(equal(ARTChannelState.Failed))
                 }
 
                 // RTL4f
@@ -1177,8 +1177,11 @@ class RealtimeClientChannel: QuickSpec {
                                 let error = stateChange.reason
                                 if state == .Connected {
                                     let channel = client.channels.get("test")
-                                    channel.on { errorInfo in
-                                        if channel.state == .Attached {
+                                    channel.on { stateChange in
+                                        guard let stateChange = stateChange else {
+                                            fail("ChannelStageChange is nil"); done(); return
+                                        }
+                                        if stateChange.current == .Attached {
                                             channel.publish(nil, data: "message") { errorInfo in
                                                 expect(errorInfo).to(beNil())
                                                 done()
@@ -1204,8 +1207,11 @@ class RealtimeClientChannel: QuickSpec {
                                 let error = stateChange.reason
                                 if state == .Connected {
                                     let channel = client.channels.get("test")
-                                    channel.on { errorInfo in
-                                        if channel.state == .Attached {
+                                    channel.on { stateChange in
+                                        guard let stateChange = stateChange else {
+                                            fail("ChannelStageChange is nil"); done(); return
+                                        }
+                                        if stateChange.current == .Attached {
                                             channel.publish(nil, data: "message") { errorInfo in
                                                 expect(errorInfo).toNot(beNil())
                                                 guard let errorInfo = errorInfo else {
@@ -1240,8 +1246,11 @@ class RealtimeClientChannel: QuickSpec {
                         TotalMessages.failed = 0
 
                         let channelToSucceed = client.channels.get("channelToSucceed")
-                        channelToSucceed.on { errorInfo in
-                            if channelToSucceed.state == .Attached {
+                        channelToSucceed.on { stateChange in
+                            guard let stateChange = stateChange else {
+                                fail("ChannelStageChange is nil"); return
+                            }
+                            if stateChange.current == .Attached {
                                 for index in 1...TotalMessages.expected {
                                     channelToSucceed.publish(nil, data: "message\(index)") { errorInfo in
                                         if errorInfo == nil {
@@ -1255,8 +1264,11 @@ class RealtimeClientChannel: QuickSpec {
                         channelToSucceed.attach()
 
                         let channelToFail = client.channels.get("channelToFail")
-                        channelToFail.on { errorInfo in
-                            if channelToFail.state == .Attached {
+                        channelToFail.on { stateChange in
+                            guard let stateChange = stateChange else {
+                                fail("ChannelStageChange is nil"); return
+                            }
+                            if stateChange.current == .Attached {
                                 for index in 1...TotalMessages.expected {
                                     channelToFail.publish(nil, data: "message\(index)") { errorInfo in
                                         if errorInfo != nil {
@@ -2034,12 +2046,12 @@ class RealtimeClientChannel: QuickSpec {
                                     partlyDone()
                                 }
 
-                                channel.on(.Error) { errorInfo in
-                                    guard let errorInfo = errorInfo else {
-                                        return
+                                channel.on(.Error) { stateChange in
+                                    guard let error = stateChange?.reason else {
+                                        fail("Reason error is nil"); partlyDone(); return
                                     }
-                                    expect(errorInfo.message).to(contain("Failed to decode data: unknown encoding: 'bad_encoding_type'"))
-                                    expect(errorInfo).to(beIdenticalTo(channel.errorReason))
+                                    expect(error.message).to(contain("Failed to decode data: unknown encoding: 'bad_encoding_type'"))
+                                    expect(error).to(beIdenticalTo(channel.errorReason))
 
                                     partlyDone()
                                 }
