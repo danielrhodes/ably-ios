@@ -2462,6 +2462,64 @@ class RealtimeClientChannel: QuickSpec {
                             }
                         }
                     }
+
+                    // RTL13c
+                    it("if the connection is no longer CONNECTED, then the automatic attempts to re-attach the channel must be cancelled") {
+                        let client = AblyTests.newRealtime(AblyTests.commonAppSetup())
+                        defer { client.dispose(); client.close() }
+                        let channel = client.channels.get("foo")
+
+                        waitUntil(timeout: testTimeout) { done in
+                            channel.attach { error in
+                                expect(error).to(beNil())
+                                done()
+                            }
+                        }
+
+                        guard let transport = client.transport as? TestProxyTransport else {
+                            fail("TestProxyTransport is not set"); return
+                        }
+
+                        transport.actionsIgnored = [.Attached]
+
+                        waitUntil(timeout: testTimeout) { done in
+                            let detachedMessageWithError = AblyTests.newErrorProtocolMessage()
+                            detachedMessageWithError.action = .Detached
+                            detachedMessageWithError.channel = "foo"
+
+                            channel.once(.Attaching) { stateChange in
+                                guard let error = stateChange?.reason  else {
+                                    fail("Reason error is nil"); done(); return
+                                }
+                                expect(stateChange.reason).to(beIdenticalTo(detachedMessageWithError.error))
+                                expect(channel.errorReason).to(beNil())
+                                done()
+                            }
+
+                            transport.receive(detachedMessageWithError)
+                        }
+
+                        waitUntil(timeout: testTimeout) { done in
+                            channel.once(.Suspended) { stateChange in
+                                guard let error = stateChange?.reason  else {
+                                    fail("Reason error is nil"); done(); return
+                                }
+                                expect(stateChange.reason).to(beIdenticalTo(detachedMessageWithError.error))
+                                expect(channel.errorReason).to(beIdenticalTo(detachedMessageWithError.error))
+                                done()
+                            }
+                        }
+
+                        waitUntil(timeout: testTimeout) { done in
+                            channel.once(.Attaching) { _ in
+                                fail("Should cancel the re-attach")
+                            }
+                            channel.once(.Detached) { _ in
+                                done()
+                            }
+                            client.onDisconnected()
+                        }
+                    }
                 }
 
             }
