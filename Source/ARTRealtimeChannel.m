@@ -321,6 +321,10 @@
         [_attachedEventEmitter emit:[NSNull null] with:[ARTErrorInfo createWithCode:90000 message:msg]];
     }
 
+    [self unlessStateChangesBefore:self.realtime.options.channelRetryTimeout do:^{
+        [self attach];
+    }];
+
     [self emit:(ARTChannelEvent)state with:status.errorInfo];
 }
 
