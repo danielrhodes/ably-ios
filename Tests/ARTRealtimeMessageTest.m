@@ -44,7 +44,7 @@
     [channel attach];
 
     [channel on:^(ARTChannelStateChange *stateChange) {
-        if (channel.state == ARTRealtimeChannelAttached) {
+        if (channel.state == ARTChannelStateAttached) {
             [channel subscribe:^(ARTMessage *message) {
                 ++numReceived;
                 if (numReceived == count) {
@@ -95,14 +95,14 @@
     __block NSUInteger attached = 0;
     // Channel 1
     [channel on:^(ARTChannelStateChange *stateChange) {
-        if (channel.state == ARTRealtimeChannelAttached) {
+        if (channel.state == ARTChannelStateAttached) {
             attached++;
         }
     }];
 
     // Channel 2
     [channel2 on:^(ARTChannelStateChange *stateChange) {
-        if (channel2.state == ARTRealtimeChannelAttached) {
+        if (channel2.state == ARTChannelStateAttached) {
             attached++;
         }
     }];
@@ -210,7 +210,7 @@
     }];
     [channel on:^(ARTChannelStateChange *stateChange) {
         XCTAssert(!stateChange.reason);
-        if(channel.state == ARTRealtimeChannelAttached) {
+        if(channel.state == ARTChannelStateAttached) {
             [expectation fulfill];
         }   
     }];
@@ -311,7 +311,7 @@
         }
     }];
     [channel on:^(ARTChannelStateChange *stateChange) {
-        if(channel.state == ARTRealtimeChannelAttached) {
+        if(channel.state == ARTChannelStateAttached) {
             [channel publish:nil data:@"testString" callback:^(ARTErrorInfo *errorInfo) {
                 XCTAssertNil(errorInfo);
             }];

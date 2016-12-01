@@ -46,7 +46,7 @@
         if (state == ARTRealtimeConnected) {
             ARTRealtimeChannel *channel = [realtime.channels get:@"attach"];
             [channel on:^(ARTChannelStateChange *stateChange) {
-                if (channel.state == ARTRealtimeChannelAttached) {
+                if (channel.state == ARTChannelStateAttached) {
                     [expectation fulfill];
                 }
             }];
@@ -63,7 +63,7 @@
     ARTRealtimeChannel *channel = [realtime.channels get:@"attach_before_connect"];
     [channel attach];
     [channel on:^(ARTChannelStateChange *stateChange) {
-        if (channel.state == ARTRealtimeChannelAttached) {
+        if (channel.state == ARTChannelStateAttached) {
             [expectation fulfill];
         }
     }];
@@ -79,11 +79,11 @@
     
     __block BOOL attached = NO;
     [channel on:^(ARTChannelStateChange *stateChange) {
-        if (channel.state == ARTRealtimeChannelAttached) {
+        if (channel.state == ARTChannelStateAttached) {
             attached = YES;
             [channel detach];
         }
-        if (attached && channel.state == ARTRealtimeChannelDetached) {
+        if (attached && channel.state == ARTChannelStateDetached) {
             [expectation fulfill];
         }
     }];
@@ -99,7 +99,7 @@
     __block BOOL attached = false;
     __block int attachCount = 0;
     [channel on:^(ARTChannelStateChange *stateChange) {
-        if (channel.state == ARTRealtimeChannelAttached) {
+        if (channel.state == ARTChannelStateAttached) {
             attachCount++;
             attached = true;
             if (attachCount == 1) {
@@ -109,7 +109,7 @@
                 [expectation fulfill];
             }
         }
-        if (attached && channel.state == ARTRealtimeChannelDetached) {
+        if (attached && channel.state == ARTChannelStateDetached) {
             [channel attach];
         }
     }];
@@ -156,10 +156,10 @@
     ARTRealtimeChannel *channel = [realtime.channels get:@"channel"];
     __block bool gotCb=false;
     [channel on:^(ARTChannelStateChange *stateChange) {
-        if(channel.state == ARTRealtimeChannelAttached) {
+        if(channel.state == ARTChannelStateAttached) {
             [realtime onSuspended];
         }
-        else if(channel.state == ARTRealtimeChannelDetached) {
+        else if(channel.state == ARTChannelStateDetached) {
             if(!gotCb) {
                 [channel publish:nil data:@"will_fail" callback:^(ARTErrorInfo *errorInfo) {
                     XCTAssertNotNil(errorInfo);
@@ -181,10 +181,10 @@
     ARTRealtime *realtime = [[ARTRealtime alloc] initWithOptions:options];
     ARTRealtimeChannel *channel = [realtime.channels get:@"channel"];
     [channel on:^(ARTChannelStateChange *stateChange) {
-        if(channel.state == ARTRealtimeChannelAttached) {
+        if(channel.state == ARTChannelStateAttached) {
             [realtime onError:[ARTTestUtil newErrorProtocolMessage]];
         }
-        else if(channel.state == ARTRealtimeChannelFailed) {
+        else if(channel.state == ARTChannelStateFailed) {
             [channel publish:nil data:@"will_fail" callback:^(ARTErrorInfo *errorInfo) {
                 XCTAssertNotNil(errorInfo);
                 [expectation fulfill];
@@ -273,7 +273,7 @@
         ARTRealtimeConnectionState state = stateChange.current;
         if (state == ARTRealtimeConnected) {
             [channel on:^(ARTChannelStateChange *stateChange) {
-                if (channel.state == ARTRealtimeChannelAttached) {
+                if (channel.state == ARTChannelStateAttached) {
                     [realtime onError:[ARTTestUtil newErrorProtocolMessage]];
                 }
             }];
@@ -312,14 +312,14 @@
     __block NSUInteger attached = 0;
     // Channel 1
     [channel on:^(ARTChannelStateChange *stateChange) {
-        if (channel.state == ARTRealtimeChannelAttached) {
+        if (channel.state == ARTChannelStateAttached) {
             attached++;
         }
     }];
 
     // Channel 2
     [channel2 on:^(ARTChannelStateChange *stateChange) {
-        if (channel2.state == ARTRealtimeChannelAttached) {
+        if (channel2.state == ARTChannelStateAttached) {
             attached++;
         }
     }];

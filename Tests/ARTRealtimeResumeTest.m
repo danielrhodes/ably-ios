@@ -46,13 +46,13 @@
     ARTRealtimeChannel *channel = [realtime.channels get:channelName];
     ARTRealtimeChannel *channel2 = [realtime2.channels get:channelName];
     [channel on:^(ARTChannelStateChange *stateChange) {
-        if(channel.state == ARTRealtimeChannelAttached) {
+        if(channel.state == ARTChannelStateAttached) {
             [channel2 attach];
         }
     }];
     [channel2 on:^(ARTChannelStateChange *stateChange) {
         //both channels are attached. lets get to work.
-        if(channel2.state == ARTRealtimeChannelAttached) {
+        if(channel2.state == ARTChannelStateAttached) {
             [channel2 publish:nil data:message1 callback:^(ARTErrorInfo *errorInfo) {
                 [channel2 publish:nil data:message2 callback:^(ARTErrorInfo *errorInfo) {
                     XCTAssertNil(errorInfo);
